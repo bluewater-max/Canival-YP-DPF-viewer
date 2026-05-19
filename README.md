@@ -11,9 +11,16 @@
 
 
 회로도구성
-
- OBD DPF Viewer schematic을 참고하시면 됩니다.
+ - OBD DPF Viewer schematic을 참고하시면 됩니다.
 
 아듀이노 소스
 
-canival_yp_DPF_Viewr.ino 를 IDE에서 실행하고 다운로드 하시면 됩니다.
+ - canival_yp_DPF_Viewr.ino 를 IDE에서 실행하고 다운로드 하시면 됩니다.
+ * arduino IDE에서 Adafruit ST7735 AND st7796 Library를 설치하셔야합니다.
+
+
+참고 site
+ ST7796S LED구동 : https://blog.naver.com/ysahn2k/223868315651
+ ELM327 datasheet : https://github.com/PowerBroker2/ELMduino/blob/master/reference/ELM327DS.pdf
+
+ 
