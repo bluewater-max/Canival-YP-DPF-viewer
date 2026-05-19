@@ -60,7 +60,7 @@ void lcd_print(uint16_t x, uint16_t y, uint8_t len, char* dbuf, char* dbufp, uin
   display.setTextSize(tSize);
   while (i < len) {
     if (dbuf[i] != dbufp[i]) {
-      display.fillRect((x + i * tSize)*xx, y * yy - 18 * tSize , xx * tSize, yy * tSize, 0x001f);
+      display.fillRect((x + i * tSize)*xx, y * yy - 18 * tSize , xx * tSize, yy * tSize, 0x0003);
       display.setCursor((x + i * tSize)*xx, y * yy);
       display.print(dbuf[i]);
     }
@@ -263,7 +263,7 @@ void setup() {
 
   display.setCursor(0, 10 * yy);
   display.print(F("DPF viewer for canival(YP)\n"));
-  display.print(F("Test version 2026-05-17\n"));
+  display.print(F("Test version 2026-05-19\n"));
   display.print(F("by yj04.choi@gmail.com"));
 
   display.fillScreen(0);
@@ -358,13 +358,13 @@ void loop() {
       dbuf[0] = asciiToByte(&rxData[163]) + '0';
       lcd_print(15, 2, 1, dbuf, &tcp, 2);
 
-      display.setTextSize(1);
-      display.fillRect(25 * 14, 1 * 24 - 18, 24 * 14, 24, 0x0000);
-      display.setCursor(25 * 14, 1 * 24);
-      display.print(sm_regenStart);
-      display.fillRect(25 * 14, 2 * 24 - 18, 24 * 14, 24, 0x0000);
-      display.setCursor(25 * 14, 2 * 24);
-      display.print(sm_current);
+//      display.setTextSize(1);
+//      display.fillRect(25 * 14, 1 * 24 - 18, 24 * 14, 24, 0x0000);
+//      display.setCursor(25 * 14, 1 * 24);
+//      display.print(sm_regenStart);
+//      display.fillRect(25 * 14, 2 * 24 - 18, 24 * 14, 24, 0x0000);
+//      display.setCursor(25 * 14, 2 * 24);
+//      display.print(sm_current);
 
       if (flagRegen == 0) {
         if ((tcp == '0' || tcp == '_') && dbuf[0] != '0' && dbuf[0] == rcp) { // totcnt is changed 0 -> 4?5?
@@ -386,10 +386,10 @@ void loop() {
           lcd_print(5, 12, 3, &dbuf[1], regen, 1);
           saveDisplayMemory(&dbuf[1], regen);
 
-          display.setTextSize(1);
-          display.fillRect(5 * 14, 12 * 24 - 18, 9 * 14, 24, 0x0000);
-          display.setCursor(5 * 14, 12 * 24);
-          display.print(result);
+//          display.setTextSize(1);
+//          display.fillRect(5 * 14, 12 * 24 - 18, 9 * 14, 24, 0x0000);
+//          display.setCursor(5 * 14, 12 * 24);
+//          display.print(result);
 
           display.setCursor(11 * 14, 12 * 24);
           for (i = 0; i < result / 500; i++) {
