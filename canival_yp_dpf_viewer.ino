@@ -35,8 +35,9 @@ uint32_t lastEventTime = 0;
 const uint32_t timeoutInterval =  5000; // 5 seconds
 
 //default font pixel size
-const uint16_t xx = 14;
-const uint16_t yy = 24;
+const uint16_t fSizeX = 14;
+const uint16_t fSizeY = 24;
+const uint16_t offsetY = 18;
 
 // memory for display data
 // to minimize update
@@ -54,15 +55,29 @@ uint8_t flagRegen = 0;
 uint16_t sm_regenStart = 0;
 uint16_t sm_current = 0;
 
+void lcdFill(uint16_t x, uint16_t y, uint16_t tSize, uint8_t len, uint16_t color) {
+  display.fillRect(x * fSizeX, y * fSizeY, fSizeX * tSize * len, fSizeY * tSize, color);
+}
+
+void lcdPutChar(uint16_t x, uint16_t y, uint16_t tSize, uint8_t val) {
+  display.setTextSize(tSize);
+  display.setCursor(x * fSizeX, y * fSizeY + offsetY);
+  display.write(val);
+}
+
+void lcdPutStringF(uint16_t x, uint16_t y, uint16_t tSize, const __FlashStringHelper* val) {
+  display.setTextSize(tSize);
+  display.setCursor(x * fSizeX, y * fSizeY + offsetY);
+  display.print(val);
+}
 
 void lcd_print(uint16_t x, uint16_t y, uint8_t len, char* dbuf, char* dbufp, uint16_t tSize) {
   uint8_t i = 0;
   display.setTextSize(tSize);
   while (i < len) {
     if (dbuf[i] != dbufp[i]) {
-      display.fillRect((x + i * tSize)*xx, y * yy - 18 * tSize , xx * tSize, yy * tSize, 0x0003);
-      display.setCursor((x + i * tSize)*xx, y * yy);
-      display.print(dbuf[i]);
+      lcdFill(x + i * tSize, y, tSize, 1, 0x0000);
+      lcdPutChar(x + i * tSize, y, tSize, dbuf[i]);
     }
     i++;
   }
@@ -261,29 +276,25 @@ void setup() {
   display.setTextWrap(false);
   display.setTextSize(1);
 
-  display.setCursor(0, 10 * yy);
+  display.setCursor(0, 10 * fSizeY);
   display.print(F("DPF viewer for canival(YP)\n"));
-  display.print(F("Test version 2026-05-19\n"));
+  display.print(F("Test version 2026-05-23\n"));
   display.print(F("by yj04.choi@gmail.com"));
 
   display.fillScreen(0);
-
-  display.setCursor(0, 0);
-  //  display.print(F("\nRegen Req     Tot.Cnt\n\n\n"));
-  display.print(F("\nRegen    Regen\n"));
-  display.print(F(  "Req.     Cnt.\n\n"));
-  display.print(F(  "Exhaust\n"));
-  display.print(F(  "temp             Deg           Deg\n\n"));
-  display.print(F(  "Soot           Total\n"));
-  display.print(F(  "mass         g sulphur          mg\n\n"));
-  display.print(F(  "Distance since last Regen       km"));
+  lcdPutStringF(0, 0, 1, F("Regen    Regen"));
+  lcdPutStringF(0, 1, 1, F("Req.     Cnt."));
+  lcdPutStringF(0, 3, 1, F("Exhaust"));
+  lcdPutStringF(0, 4, 1, F("temp             Deg           Deg"));
+  lcdPutStringF(0, 6, 1, F("Soot           Total"));
+  lcdPutStringF(0, 7, 1, F("mass         g sulphur          mg"));
+  lcdPutStringF(0, 9, 1, F(  "Distance since last Regen       km"));
 }
 
 void loop() {
   uint8_t ret, i;
   uint16_t result;
   uint32_t resultL;
-  //  long resultSL;
 
   if (!isConnected) {
     isConnected = initOBD();
@@ -295,22 +306,22 @@ void loop() {
     }
   }
   else {
-    //    delay(1000);
-    //    OBD_Serial.println("017C");
-    //    if (receiveOBD() & RxSuccess) {
-    //      resultL = asciiToInt(&rxData[11]);
-    //      resultL = resultL * 10 - 4000;
-    //      Serial.print("#DPF temp*100:");
-    //      Serial.println(resultL);
-    //    }
-
+    /*
+    delay(1000);
+    OBD_Serial.println("017C");
+    if (receiveOBD() & RxSuccess) {
+      resultL = asciiToInt(&rxData[11]);
+      resultL = resultL * 10 - 4000;
+      Serial.print("#DPF temp*100:");
+      Serial.println(resultL);
+    }
+    */
 
     delay(500);
     OBD_Serial.println("22ED94");
     ret = receiveOBD();
-    if (ret & RxSuccess) {
-
-      resultL = asciiToByte(&rxData[32]);
+    resultL = asciiToByte(&rxData[32]);
+    if ((ret & RxSuccess) && (resultL < 50)) {  //error check
       if (flagRegen == 0) {
         sm_regenStart = (uint16_t)resultL;
       }
@@ -320,10 +331,8 @@ void loop() {
       resultL = resultL * 9900 / 255;
 
       intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(5, 8, 4, &dbuf[1], &sm[1], 2);
+      lcd_print(5, 7, 4, &dbuf[1], &sm[1], 2);
       saveDisplayMemory(dbuf, sm);
-
-
 
       Serial.print("#DPF soot mass*100:");
       Serial.println(resultL);
@@ -333,123 +342,105 @@ void loop() {
     OBD_Serial.println("22ED03");
     ret = receiveOBD();
     if (ret & RxSuccess) {
-
-      //      resultL = asciiToLong(&rxData[125]) / 10;
-      //      Serial.print("#Odometer at last DPF regen*100:");
-      //      Serial.println(resultL);
-
+      /*
+      resultL = asciiToLong(&rxData[125]) / 10;
+      Serial.print("#Odometer at last DPF regen*100:");
+      Serial.println(resultL);
+      */
       resultL = asciiToLong(&rxData[138]) / 10;
       intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(26, 10, 5, dbuf, dist, 1);
+      lcd_print(26, 9, 5, dbuf, dist, 1);
       saveDisplayMemory(dbuf, dist);
       Serial.print("#Distance since Last DPF regen*100:");
       Serial.println(resultL);
 
       // Regen demand counter
       dbuf[0] = asciiToByte(&rxData[123]) + '0';
-      lcd_print(6, 2, 1, dbuf, &rcp, 2);
-      rcp = dbuf[0];
-      //      saveDisplayMemory(dbuf, &rcp);
-      Serial.print("#Regen demand counter by soot load:");
-      Serial.println(dbuf[0]);
-
+      if(dbuf[0] <= '5'){
+        lcd_print(6, 1, 1, dbuf, &rcp, 2);
+        rcp = dbuf[0];  // saveDisplayMemory(dbuf, &rcp);
+        Serial.print("#Regen demand counter by soot load:");
+        Serial.println(dbuf[0]);
+      }
 
       // Regen Total counter
       dbuf[0] = asciiToByte(&rxData[163]) + '0';
-      lcd_print(15, 2, 1, dbuf, &tcp, 2);
-
-//      display.setTextSize(1);
-//      display.fillRect(25 * 14, 1 * 24 - 18, 24 * 14, 24, 0x0000);
-//      display.setCursor(25 * 14, 1 * 24);
-//      display.print(sm_regenStart);
-//      display.fillRect(25 * 14, 2 * 24 - 18, 24 * 14, 24, 0x0000);
-//      display.setCursor(25 * 14, 2 * 24);
-//      display.print(sm_current);
-
-      if (flagRegen == 0) {
-        if ((tcp == '0' || tcp == '_') && dbuf[0] != '0' && dbuf[0] == rcp) { // totcnt is changed 0 -> 4?5?
-          flagRegen = 1;
-          display.setCursor(0, 24 * 12);
-          display.setTextSize(1);
-          display.print(F("Regen  0% |____________________|"));
-        }
-      }
-      else {
-        if ( dbuf[0] != '0'&& dbuf[0] == rcp) {
-
-          result = sm_current * 100;
-          result = result / sm_regenStart;
-          result = result * 100;
-          result = 10000 - result;
-
-          intX100ToStrFloat(result, &dbuf[1]);
-          lcd_print(5, 12, 3, &dbuf[1], regen, 1);
-          saveDisplayMemory(&dbuf[1], regen);
-
-//          display.setTextSize(1);
-//          display.fillRect(5 * 14, 12 * 24 - 18, 9 * 14, 24, 0x0000);
-//          display.setCursor(5 * 14, 12 * 24);
-//          display.print(result);
-
-          display.setCursor(11 * 14, 12 * 24);
-          for (i = 0; i < result / 500; i++) {
-            display.print('#');
+      if(dbuf[0] <= '5'){
+        lcd_print(15, 1, 1, dbuf, &tcp, 2);
+  
+        if (dbuf[0] != '0' && dbuf[0] == rcp) { //55,44,33,22
+          if (flagRegen == 0) {
+            flagRegen = 1;
+            lcdPutStringF(0, 11, 1, F("Regen   %"));
+          }
+          else {
+            result = sm_current * 100;
+            result = result / sm_regenStart;
+            result = result * 100;
+            result = 10000 - result;
+            if (result > 10000) result = 0;
+  
+            intX100ToStrFloat(result, &dbuf[1]);
+            lcd_print(5, 11, 3, &dbuf[1], regen, 1);
+            saveDisplayMemory(&dbuf[1], regen);
+  
+            i = result / 500;
+            lcdFill(11 + i, 11, 1, 1, 0x001f);
           }
         }
-        else {
-          display.fillRect(0, 12 * 24 - 18, 480, 24, 0x0000);
+        else if ( dbuf[0] == '0' && flagRegen == 1) {
+          lcdFill(0, 11, 1, 40, 0x0000);
           flagRegen = 0;
         }
+        tcp = dbuf[0];
+        Serial.print("#Total Regen conter:");
+        Serial.println(dbuf[0]);
       }
-      tcp = dbuf[0];
-      Serial.print("#Total Regen conter:");
-      Serial.println(dbuf[0]);
-
-
-
-
-      resultL = asciiToByte(&rxData[112]);
-      resultL = resultL * 120100 / 255 + 9900;
-      intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(7, 5, 5, dbuf, et1, 2);
-      saveDisplayMemory(dbuf, et1);
-
-      Serial.print("#temp1*100:");
-      Serial.println(resultL);
-
-
-      resultL = asciiToByte(&rxData[119]);
-      resultL = resultL * 120100 / 255 + 9900;
-      intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(21, 5, 5, dbuf, et2, 2);
-      saveDisplayMemory(dbuf, et2);
-
-      Serial.print("#temp2*100:");
-      Serial.println(resultL);
     }
 
-    //    delay(500);
-    //    OBD_Serial.println("22E0F1");
-    //    if (receiveOBD() & RxSuccess) {
-    //      resultSL = asciiToByte(&rxData[100]);
-    //      resultSL = resultSL * 110000 / 255 - 10000;
-    //      Serial.print("#DPF diff pressure*100:");
-    //      Serial.println(resultSL);
-    //    }
 
-    delay(500);
-    OBD_Serial.println("22ED29");
-    ret = receiveOBD();
-    if (ret & RxSuccess) {
-      resultL = (uint32_t)asciiToInt(&rxData[13]);
-      resultL = resultL * 15259; //*0.15259 *100
-      resultL = resultL /  1000;
-      intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(22, 8, 5, dbuf, ts, 2);
-      saveDisplayMemory(dbuf, ts);
 
-      Serial.print("#Total sulphur mass*100:");
-      Serial.println(resultL);
-    }
+    resultL = asciiToByte(&rxData[112]);
+    resultL = resultL * 120100 / 255 + 9900;
+    intX100ToStrFloat((uint16_t)resultL, dbuf);
+    lcd_print(7, 4, 5, dbuf, et1, 2);
+    saveDisplayMemory(dbuf, et1);
+
+    Serial.print("#temp1*100:");
+    Serial.println(resultL);
+
+
+    resultL = asciiToByte(&rxData[119]);
+    resultL = resultL * 120100 / 255 + 9900;
+    intX100ToStrFloat((uint16_t)resultL, dbuf);
+    lcd_print(21, 4, 5, dbuf, et2, 2);
+    saveDisplayMemory(dbuf, et2);
+
+    Serial.print("#temp2*100:");
+    Serial.println(resultL);
+  }
+
+  //    delay(500);
+  //    OBD_Serial.println("22E0F1");
+  //    if (receiveOBD() & RxSuccess) {
+  //      resultSL = asciiToByte(&rxData[100]);
+  //      resultSL = resultSL * 110000 / 255 - 10000;
+  //      Serial.print("#DPF diff pressure*100:");
+  //      Serial.println(resultSL);
+  //    }
+
+  delay(500);
+  OBD_Serial.println("22ED29");
+  ret = receiveOBD();
+  if (ret & RxSuccess) {
+    resultL = (uint32_t)asciiToInt(&rxData[13]);
+    resultL = resultL * 15259; //*0.15259 *100
+    resultL = resultL /  1000;
+    intX100ToStrFloat((uint16_t)resultL, dbuf);
+    lcd_print(22, 7, 5, dbuf, ts, 2);
+    saveDisplayMemory(dbuf, ts);
+
+    Serial.print("#Total sulphur mass*100:");
+    Serial.println(resultL);
   }
 }
