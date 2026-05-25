@@ -60,6 +60,9 @@ ELM327 배선
 <img width="380" height="285" alt="a1c70d902e4abfb335e2b5aae886bd7d6042d4cef578f4e931362f408537e527" src="https://github.com/user-attachments/assets/9ae47b45-f58b-4976-bb4b-bfb0e007ad80" />
 
 
+UART 로그 - USB cable을 통하여 PC에 연결하여 log를 확인할수있다.
+
+<img width="568" height="301" alt="image" src="https://github.com/user-attachments/assets/7b987a4f-59e9-4fd4-997e-7ac2cdd39b1b" />
 
 참고 site
 
