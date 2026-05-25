@@ -5,13 +5,14 @@
 typedef unsigned char uint8_t;
 typedef unsigned int uint16_t;
 typedef unsigned long uint32_t;
+typedef signed long int32_t;
 
 // Define display pin connections
-#define TFT_SCLK    13
-#define TFT_MOSI    11
-#define TFT_CS      10
-#define TFT_RST     7 // Or set to -1 and connect to Arduino RESET pin
-#define TFT_DC      6
+#define TFT_SCLK    13  // LCD SCL
+#define TFT_MOSI    11  // LCD SDA
+#define TFT_CS      10  // LCD CS
+#define TFT_RST     7   // LCD RST
+#define TFT_DC      6   // LCD DC
 Adafruit_ST7796S display(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 #define OBD_RX      9
@@ -41,8 +42,7 @@ const uint16_t offsetY = 18;
 
 // memory for display data
 // to minimize update
-uint8_t rcp = '_';
-uint8_t tcp = '_';
+uint8_t rcp, tcp;
 uint8_t dbuf[6];  // display number buffer
 uint8_t et1[5]; // temp sensor
 uint8_t et2[5]; // temp sensor
@@ -56,7 +56,7 @@ uint16_t sm_regenStart = 0;
 uint16_t sm_current = 0;
 
 void lcdFill(uint16_t x, uint16_t y, uint16_t tSize, uint8_t len, uint16_t color) {
-  display.fillRect(x * fSizeX, y * fSizeY, fSizeX * tSize * len, fSizeY * tSize, color);
+  display.fillRect(x * fSizeX, (y - (tSize - 1)) * fSizeY, fSizeX * tSize * len, fSizeY * tSize, color);
 }
 
 void lcdPutChar(uint16_t x, uint16_t y, uint16_t tSize, uint8_t val) {
@@ -128,7 +128,7 @@ uint8_t receiveOBD() {
       return rxStatus;
     }
 
-    if (OBD_Serial.available()) {
+    if (OBD_Serial.available() > 0) {
       rxdpp = rxdp;
       rxdp = rxd;
       rxd = OBD_Serial.read();
@@ -149,6 +149,13 @@ uint8_t receiveOBD() {
           rxStatus |= RxDataResp;
           Serial.println("rxed data response.+1");
         }
+        else if (rxData[2] == '7' && rxData[3] == 'E' && rxData[4] == '8') {
+          for (i = 0; i < maxRxSize - 2 ; i++) {
+            rxData[i] = rxData[i + 2];
+          }
+          rxStatus |= RxDataResp;
+          Serial.println("rxed data response.+2");
+        }
         else if (rxData[0] == 'E' && rxData[1] == '8' && rxData[2] == '1') {
           for (i = maxRxSize; i != 0 ; i--) {
             rxData[i] = rxData[i - 1];
@@ -157,7 +164,7 @@ uint8_t receiveOBD() {
           Serial.println("rxed data response.-1");
         }
         else {
-          Serial.println("rxed no data response.");
+          Serial.println("rxed response.");
         }
         return rxStatus;
       }
@@ -178,13 +185,21 @@ uint8_t receiveOBD() {
 uint8_t initOBD(void) {
   Serial.println("#start ELM327 INIT");
 
-  delay(200);
+  delay(1000);
   OBD_Serial.println("ATZ");
   if (!(receiveOBD() & RxELM327)) {
     return 0;
   }
   Serial.println("#ATZ - OK");
 
+  //  delay(200);
+  //  OBD_Serial.println("ATBRDD0");
+  //  if (!(receiveOBD() & RxOK)) {
+  //    return 0;
+  //  }
+  //  Serial.println("#ATBRD - OK");
+  //
+  //  OBD_Serial.begin(19200);
 
   delay(200);
   OBD_Serial.println("ATD");
@@ -278,7 +293,7 @@ void setup() {
 
   display.setCursor(0, 10 * fSizeY);
   display.print(F("DPF viewer for canival(YP)\n"));
-  display.print(F("Test version 2026-05-23\n"));
+  display.print(F("Test version 2026-05-25\n"));
   display.print(F("by yj04.choi@gmail.com"));
 
   display.fillScreen(0);
@@ -295,6 +310,7 @@ void loop() {
   uint8_t ret, i;
   uint16_t result;
   uint32_t resultL;
+  int32_t resultSL;
 
   if (!isConnected) {
     isConnected = initOBD();
@@ -306,8 +322,8 @@ void loop() {
     }
   }
   else {
-    /*
-    delay(1000);
+
+    delay(750);
     OBD_Serial.println("017C");
     if (receiveOBD() & RxSuccess) {
       resultL = asciiToInt(&rxData[11]);
@@ -315,9 +331,9 @@ void loop() {
       Serial.print("#DPF temp*100:");
       Serial.println(resultL);
     }
-    */
 
-    delay(500);
+
+    delay(750);
     OBD_Serial.println("22ED94");
     ret = receiveOBD();
     resultL = asciiToByte(&rxData[32]);
@@ -331,22 +347,22 @@ void loop() {
       resultL = resultL * 9900 / 255;
 
       intX100ToStrFloat((uint16_t)resultL, dbuf);
-      lcd_print(5, 7, 4, &dbuf[1], &sm[1], 2);
+      lcd_print(5, 7, 4, &dbuf[1], &sm[1], 2);  // SM is lower than 100, so don't display first digit
       saveDisplayMemory(dbuf, sm);
 
       Serial.print("#DPF soot mass*100:");
       Serial.println(resultL);
     }
 
-    delay(500);
+    delay(750);
     OBD_Serial.println("22ED03");
     ret = receiveOBD();
     if (ret & RxSuccess) {
-      /*
+
       resultL = asciiToLong(&rxData[125]) / 10;
       Serial.print("#Odometer at last DPF regen*100:");
       Serial.println(resultL);
-      */
+
       resultL = asciiToLong(&rxData[138]) / 10;
       intX100ToStrFloat((uint16_t)resultL, dbuf);
       lcd_print(26, 9, 5, dbuf, dist, 1);
@@ -356,7 +372,7 @@ void loop() {
 
       // Regen demand counter
       dbuf[0] = asciiToByte(&rxData[123]) + '0';
-      if(dbuf[0] <= '5'){
+      if (dbuf[0] <= '5') { // in case of data shift error
         lcd_print(6, 1, 1, dbuf, &rcp, 2);
         rcp = dbuf[0];  // saveDisplayMemory(dbuf, &rcp);
         Serial.print("#Regen demand counter by soot load:");
@@ -365,33 +381,34 @@ void loop() {
 
       // Regen Total counter
       dbuf[0] = asciiToByte(&rxData[163]) + '0';
-      if(dbuf[0] <= '5'){
+      if (dbuf[0] <= '5') { // in case of data shift error
         lcd_print(15, 1, 1, dbuf, &tcp, 2);
-  
+
         if (dbuf[0] != '0' && dbuf[0] == rcp) { //55,44,33,22
-          if (flagRegen == 0) {
+          if (flagRegen == 0) { // Regen starts
             flagRegen = 1;
             lcdPutStringF(0, 11, 1, F("Regen   %"));
           }
-          else {
+          else {  // Regen is in progress
             result = sm_current * 100;
             result = result / sm_regenStart;
             result = result * 100;
             result = 10000 - result;
             if (result > 10000) result = 0;
-  
+
             intX100ToStrFloat(result, &dbuf[1]);
             lcd_print(5, 11, 3, &dbuf[1], regen, 1);
             saveDisplayMemory(&dbuf[1], regen);
-  
+
             i = result / 500;
             lcdFill(11 + i, 11, 1, 1, 0x001f);
           }
         }
-        else if ( dbuf[0] == '0' && flagRegen == 1) {
+        else if ( dbuf[0] == '0' && flagRegen == 1) { // Regen finishes
           lcdFill(0, 11, 1, 40, 0x0000);
           flagRegen = 0;
         }
+
         tcp = dbuf[0];
         Serial.print("#Total Regen conter:");
         Serial.println(dbuf[0]);
@@ -418,29 +435,29 @@ void loop() {
 
     Serial.print("#temp2*100:");
     Serial.println(resultL);
-  }
 
-  //    delay(500);
-  //    OBD_Serial.println("22E0F1");
-  //    if (receiveOBD() & RxSuccess) {
-  //      resultSL = asciiToByte(&rxData[100]);
-  //      resultSL = resultSL * 110000 / 255 - 10000;
-  //      Serial.print("#DPF diff pressure*100:");
-  //      Serial.println(resultSL);
-  //    }
+    delay(750);
+    OBD_Serial.println("22E0F1");
+    if (receiveOBD() & RxSuccess) {
+      resultSL = asciiToByte(&rxData[100]);
+      resultSL = resultSL * 110000 / 255 - 10000;
+      Serial.print("#DPF diff pressure*100:");
+      Serial.println(resultSL);
+    }
 
-  delay(500);
-  OBD_Serial.println("22ED29");
-  ret = receiveOBD();
-  if (ret & RxSuccess) {
-    resultL = (uint32_t)asciiToInt(&rxData[13]);
-    resultL = resultL * 15259; //*0.15259 *100
-    resultL = resultL /  1000;
-    intX100ToStrFloat((uint16_t)resultL, dbuf);
-    lcd_print(22, 7, 5, dbuf, ts, 2);
-    saveDisplayMemory(dbuf, ts);
+    delay(750);
+    OBD_Serial.println("22ED29");
+    ret = receiveOBD();
+    if (ret & RxSuccess) {
+      resultL = (uint32_t)asciiToInt(&rxData[13]);
+      resultL = resultL * 15259; //*0.15259 *100
+      resultL = resultL /  1000;
+      intX100ToStrFloat((uint16_t)resultL, dbuf);
+      lcd_print(22, 7, 5, dbuf, ts, 2);
+      saveDisplayMemory(dbuf, ts);
 
-    Serial.print("#Total sulphur mass*100:");
-    Serial.println(resultL);
+      Serial.print("#Total sulphur mass*100:");
+      Serial.println(resultL);
+    }
   }
 }
